@@ -26,7 +26,11 @@ python clustering_model.py predict --input data/melbourne_house_prices_clean.csv
 Input columns: `Landsize` (square metres), `Rooms`, `HouseAge` (years at sale),
 `Distance` (km to CBD), `Bathroom`, `Car`, `Price` (AUD), and `Bedroom2`.
 All eight columns must be present; blank numeric values use training medians.
-Additional columns are preserved in the output, which adds `cluster_id`.
+Additional columns are preserved in the output, which adds `cluster_id` and
+`cluster_label`. Labels follow the updated notebook's ordered median-profile rules:
+compact inner-city units, large premium family houses, inner-city heritage houses,
+and affordable outer-suburb houses. These names describe clusters, not validated
+market segments. The mapping is stored in the model and its metadata.
 Price **is used** in the current model, despite older notebook comments.
 Property type and coordinates are excluded. This model assigns clusters; it
 does not predict price. IDs are arbitrary and may change after retraining.
@@ -36,6 +40,10 @@ Retrain and verify that the saved model reproduces its training assignments:
 ```powershell
 python clustering_model.py train
 ```
+
+Training also refreshes `data/melbourne_house_prices_with_clusters.csv` with the
+current model's assignments and descriptive names. Bathroom, Car, Price and
+Bedroom2 are included alongside Landsize, Rooms, HouseAge and Distance.
 
 Only load joblib files from trusted sources. Use the pinned dependency versions
 when loading this artifact. The model, illustrated model card and cluster profiles

@@ -17,6 +17,25 @@ ROOT = Path(__file__).resolve().parent
 FEATURES = ["Landsize", "Rooms", "HouseAge", "Distance", "Bathroom", "Car", "Price", "Bedroom2"]
 
 
+def cluster_names(values, labels):
+    """Apply the ordered profile-naming rules from notebook cell 94."""
+    medians = values.groupby(labels).median()
+    remaining = list(medians.index)
+    names = {}
+    rules = [
+        ("Landsize", "min", "Compact inner-city units"),
+        ("Price", "max", "Large premium family houses"),
+        ("HouseAge", "max", "Inner-city heritage houses"),
+        ("Distance", "max", "Affordable outer-suburb houses"),
+    ]
+    for column, pick, name in rules:
+        candidates = medians.loc[remaining, column]
+        cluster_id = int(candidates.idxmin() if pick == "min" else candidates.idxmax())
+        names[cluster_id] = name
+        remaining.remove(cluster_id)
+    return names
+
+
 def inputs(data):
     missing = set(FEATURES) - set(data.columns)
     if missing:
@@ -39,6 +58,7 @@ def train(data_path, model_path):
         ("kmeans", KMeans(n_clusters=4, n_init=10, random_state=42)),
     ])
     labels = model.fit_predict(values)
+    model.cluster_label_map_ = cluster_names(values, labels)
     model_path.parent.mkdir(parents=True, exist_ok=True)
     joblib.dump(model, model_path)
     restored = joblib.load(model_path)
@@ -53,11 +73,15 @@ def train(data_path, model_path):
         "joblib_version": joblib.__version__,
         "clusters": 4,
         "cluster_counts": pd.Series(labels).value_counts().sort_index().to_dict(),
+        "cluster_names": model.cluster_label_map_,
         "pca_components": int(model.named_steps["pca"].n_components_),
         "explained_variance": float(model.named_steps["pca"].explained_variance_ratio_.sum()),
         "notes": "Price is an input in AUD. HouseAge is age at sale in years. Type and coordinates are excluded. Cluster IDs are arbitrary and may change when retrained. This is not a price predictor.",
     }
     model_path.with_suffix(".json").write_text(json.dumps(metadata, indent=2), encoding="utf-8")
+    data["cluster_id"] = labels
+    data["cluster_label"] = data["cluster_id"].map(model.cluster_label_map_)
+    data.to_csv(data_path.with_name("melbourne_house_prices_with_clusters.csv"), index=False)
     print(f"Saved and verified {model_path}")
 
 
@@ -94,6 +118,8 @@ def main():
         data = pd.read_csv(args.input)
         model = joblib.load(args.model)
         data["cluster_id"] = model.predict(inputs(data))
+        if hasattr(model, "cluster_label_map_"):
+            data["cluster_label"] = data["cluster_id"].map(model.cluster_label_map_)
         data.to_csv(args.output, index=False)
         print(f"Saved {len(data)} predictions to {args.output}")
 

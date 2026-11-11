@@ -18,6 +18,7 @@ def build_card(model_path, output_dir, metadata):
     values = inputs(data)
     scores = model[:-1].transform(values)
     labels = model.predict(values)
+    names = {int(k): v for k, v in metadata["cluster_names"].items()}
     counts = pd.Series(labels).value_counts().sort_index()
     if counts.to_dict() != {int(k): v for k, v in metadata["cluster_counts"].items()}:
         raise ValueError("Training data no longer matches released model counts")
@@ -30,10 +31,10 @@ def build_card(model_path, output_dir, metadata):
     for i in counts.index:
         mask = labels == i
         axes[0].scatter(scores[mask, 0], scores[mask, 1], s=7, alpha=.35,
-                        color=colors[i], label=f"Cluster {i}", rasterized=True)
+                        color=colors[i], label=f"{i}: {names[i]}", rasterized=True)
     variance = model.named_steps["pca"].explained_variance_ratio_
     axes[0].set(xlabel=f"PC1 ({variance[0]:.1%} variance)", ylabel=f"PC2 ({variance[1]:.1%} variance)", title="A two-component view of housing clusters")
-    axes[0].legend(frameon=False, markerscale=3)
+    axes[0].legend(frameon=False, markerscale=3, fontsize=8)
     bars = axes[1].bar([f"Cluster {i}" for i in counts.index], counts, color=colors)
     axes[1].bar_label(bars, labels=[f"{n:,}\n{n/len(data):.1%}" for n in counts], padding=5)
     axes[1].set(title="How the training sales are grouped", ylabel="Property sales", ylim=(0, counts.max()*1.2))
@@ -44,7 +45,7 @@ def build_card(model_path, output_dir, metadata):
     fig, ax = plt.subplots(figsize=(12, 4), layout="constrained")
     im = ax.imshow(z, cmap="RdBu_r", vmin=-2, vmax=2, aspect="auto")
     ax.set_xticks(range(len(values.columns)), values.columns)
-    ax.set_yticks(range(len(counts)), [f"Cluster {i}" for i in counts.index])
+    ax.set_yticks(range(len(counts)), [f"{i}: {names[i]}" for i in counts.index])
     for i in range(len(counts)):
         for j in range(len(values.columns)):
             ax.text(j, i, f"{z.iloc[i,j]:+.1f}", ha="center", va="center",
@@ -63,8 +64,9 @@ def build_card(model_path, output_dir, metadata):
     plt.close(fig)
     summary = values.assign(cluster_id=labels).groupby("cluster_id").median()
     summary.insert(0,"sales",counts)
+    summary.insert(0,"cluster_label", pd.Series(names))
     summary.to_csv(output_dir / "cluster_profiles.csv")
-    rows = "\n".join(f"| {i} | {int(r.sales):,} | {r.Rooms:.1f} | {r.Landsize:.0f} | {r.HouseAge:.0f} | {r.Distance:.1f} | {r.Price:,.0f} |" for i,r in summary.iterrows())
+    rows = "\n".join(f"| {i}: {names[i]} | {int(r.sales):,} | {r.Rooms:.1f} | {r.Landsize:.0f} | {r.HouseAge:.0f} | {r.Distance:.1f} | {r.Price:,.0f} |" for i,r in summary.iterrows())
     card = f"""---
 language: en
 license: mit
@@ -129,8 +131,11 @@ Property type, suburb, latitude and longitude are excluded. Distance remains an 
 ## What the clusters look like
 
 Values below are observed training medians; the full eight-feature table is available
-in [cluster_profiles.csv](cluster_profiles.csv). Names remain Cluster 0–3 to avoid
-implying independently validated market segments.
+in [cluster_profiles.csv](cluster_profiles.csv). Names follow the updated notebook:
+smallest median land area → Compact inner-city units; highest remaining median
+price → Large premium family houses; oldest remaining median age → Inner-city
+heritage houses; farthest remaining median CBD distance → Affordable outer-suburb
+houses. These are exploratory descriptions, not validated market segments.
 
 | Cluster | Sales | Rooms | Land (m²) | Age (years) | CBD (km) | Price (AUD) |
 |---|---:|---:|---:|---:|---:|---:|
@@ -194,7 +199,8 @@ Alternatively, download the repository and run:
 python clustering_model.py predict --model melbourne-housing-pca-kmeans-clustering.joblib --input properties.csv --output predictions.csv
 ```
 
-The CSV output preserves original columns and adds `cluster_id`. Use the pinned
+The CSV output preserves original columns and adds `cluster_id` and `cluster_label`.
+The pipeline's `cluster_label_map_` attribute maps prediction IDs to names. Use the pinned
 versions recorded in `requirements.txt` and `model_metadata.json`. Only load trusted
 joblib files. Hugging Face hosts the artifact; this release provides no hosted API.
 
