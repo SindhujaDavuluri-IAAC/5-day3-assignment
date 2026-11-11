@@ -1,0 +1,28 @@
+{
+  "features": [
+    "Landsize",
+    "Rooms",
+    "HouseAge",
+    "Distance",
+    "Bathroom",
+    "Car",
+    "Price",
+    "Bedroom2"
+  ],
+  "training_data": "D:\\MaAI IAAC\\Term 1\\AI Methods\\5-day3-assignment\\data\\melbourne_house_prices_clean.csv",
+  "training_rows": 12078,
+  "sklearn_version": "1.4.2",
+  "pandas_version": "2.2.2",
+  "numpy_version": "1.26.4",
+  "joblib_version": "1.4.2",
+  "clusters": 4,
+  "cluster_counts": {
+    "0": 1968,
+    "1": 2946,
+    "2": 4706,
+    "3": 2458
+  },
+  "pca_components": 6,
+  "explained_variance": 0.9595262479414602,
+  "notes": "Price is an input in AUD. HouseAge is age at sale in years. Type and coordinates are excluded. Cluster IDs are arbitrary and may change when retrained. This is not a price predictor."
+}
