@@ -22,6 +22,12 @@
     "2": 4706,
     "3": 2458
   },
+  "cluster_names": {
+    "1": "Compact inner-city units",
+    "0": "Large premium family houses",
+    "3": "Inner-city heritage houses",
+    "2": "Affordable outer-suburb houses"
+  },
   "pca_components": 6,
   "explained_variance": 0.9595262479414602,
   "notes": "Price is an input in AUD. HouseAge is age at sale in years. Type and coordinates are excluded. Cluster IDs are arbitrary and may change when retrained. This is not a price predictor."

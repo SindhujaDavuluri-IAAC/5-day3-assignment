@@ -24,7 +24,7 @@ def prepare():
     model = joblib.load(source / "melbourne-housing-pca-kmeans-clustering.joblib")
     data["cluster_id"] = model.predict(inputs(data))
     # Recompute IDs with the released model rather than reusing an older notebook CSV.
-    data["cluster_label"] = data["cluster_id"].map(lambda i: f"Cluster {i}")
+    data["cluster_label"] = data["cluster_id"].map(model.cluster_label_map_)
     data.to_csv(data_dir / "melbourne_house_prices_with_clusters.csv", index=False)
     shutil.copy2(ROOT / "data" / "melbourne_house_prices_clean.csv", data_dir)
     metadata = json.loads((release / "model_metadata.json").read_text(encoding="utf-8"))
@@ -44,7 +44,8 @@ def prepare():
 The dataset is also available as a [Hugging Face dataset](https://huggingface.co/datasets/{REPO_ID}).
 `data/melbourne_house_prices_clean.csv` is the original cleaned training table.
 `data/melbourne_house_prices_with_clusters.csv` adds predictions from this exact
-released model; names are neutral `Cluster 0`–`Cluster 3`. Both have {len(data):,} rows.
+released model; descriptive names follow the notebook's ordered profile rules.
+Both have {len(data):,} rows.
 
 ```python
 from datasets import load_dataset
@@ -90,7 +91,9 @@ The cleaned training table has 28 columns. The labelled table adds `cluster_id`
 and `cluster_label`, recomputed with the [released model](https://huggingface.co/{REPO_ID}).
 The model uses Landsize, Rooms, HouseAge, Distance, Bathroom, Car, Price and Bedroom2,
 with median imputation, standard scaling, PCA retaining 95% variance and four-cluster
-K-Means. Price is an input. The label is descriptive only: `Cluster 0`–`Cluster 3`.
+K-Means. Price is an input. Labels follow the notebook's ordered rules: smallest
+median land area, then highest median price, then oldest median age, then greatest
+median distance among the remaining clusters. Names are exploratory descriptions.
 
 ![Cluster overview](figures/cluster_overview.png)
 ![Cluster profiles](figures/cluster_profiles.png)
